@@ -4,7 +4,8 @@
       "Bash(npx create-expo-app@latest flow-app -t expo-template-blank-typescript)",
       "Bash(npm install:*)",
       "Bash(npx expo install:*)",
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "Skill(example-skills:frontend-design)"
     ],
     "deny": [],
     "ask": []

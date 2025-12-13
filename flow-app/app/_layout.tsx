@@ -22,13 +22,41 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="auto" />
-      <Stack>
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#0A0A0A',
+          },
+          headerTintColor: '#F5F5F5',
+          headerShadowVisible: false,
+          contentStyle: {
+            backgroundColor: '#0A0A0A',
+          },
+        }}
+      >
         <Stack.Screen
           name="index"
           options={{
             headerShown: false,
             title: 'O(1)'
+          }}
+        />
+        <Stack.Screen
+          name="create-decision"
+          options={{
+            title: 'New Decision',
+            presentation: 'card',
+            headerBackTitle: 'Cancel',
+          }}
+        />
+        <Stack.Screen
+          name="tournament"
+          options={{
+            title: 'Tournament',
+            presentation: 'card',
+            headerBackTitle: 'Back',
+            gestureEnabled: false, // Prevent accidental swipe back
           }}
         />
         <Stack.Screen

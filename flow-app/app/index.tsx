@@ -13,9 +13,15 @@ export default function HomeScreen() {
           {Brand.description}
         </Text>
 
+        <Link href="/create-decision" asChild>
+          <Pressable style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Make a Decision</Text>
+          </Pressable>
+        </Link>
+
         <Link href="/debug" asChild>
-          <Pressable style={styles.debugButton}>
-            <Text style={styles.debugButtonText}>Debug Database</Text>
+          <Pressable style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Debug Database</Text>
           </Pressable>
         </Link>
       </View>
@@ -26,7 +32,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F7',
+    backgroundColor: '#0A0A0A',
   },
   content: {
     flex: 1,
@@ -37,28 +43,47 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#1C1C1E',
+    color: '#F5F5F5',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
-    color: '#6E6E73',
+    color: '#A0A0A0',
     marginBottom: 24,
   },
   description: {
     fontSize: 16,
-    color: '#8E8E93',
+    color: '#6B6B6B',
     textAlign: 'center',
     marginBottom: 40,
   },
-  debugButton: {
-    backgroundColor: '#007AFF',
+  primaryButton: {
+    backgroundColor: '#2D5F4F',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+    minWidth: 240,
+    shadowColor: '#2D5F4F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  primaryButtonText: {
+    color: '#F5F5F5',
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
-  debugButtonText: {
-    color: '#FFFFFF',
+  secondaryButtonText: {
+    color: '#6B4E71',
     fontSize: 16,
     fontWeight: '600',
   },

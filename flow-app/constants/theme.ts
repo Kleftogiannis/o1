@@ -96,3 +96,47 @@ export const Typography = {
     lineHeight: 16,
   },
 };
+
+// Dark emerald/pine green + deep plum minimal theme
+export const Theme = {
+  colors: {
+    // Dark theme base
+    background: '#0A0A0A',           // Pure black with slight warmth
+    backgroundSecondary: '#1A1A1A',  // Elevated surface
+    surface: '#1F1F1F',              // Card backgrounds
+    surfaceElevated: '#2A2A2A',      // Hover/pressed states
+
+    // Primary: Dark emerald/pine green
+    primary: '#2D5F4F',              // Deep pine green
+    primaryLight: '#3A7563',         // Lighter emerald
+    primaryDark: '#1E4237',          // Darker forest green
+    primaryMuted: 'rgba(45, 95, 79, 0.15)', // Subtle backgrounds
+
+    // Secondary: Deep plum/lilac
+    secondary: '#6B4E71',            // Deep plum
+    secondaryLight: '#8B6B8F',       // Lighter lilac
+    secondaryDark: '#4A3450',        // Darker plum
+    secondaryMuted: 'rgba(107, 78, 113, 0.15)', // Subtle backgrounds
+
+    // Text hierarchy
+    textPrimary: '#F5F5F5',          // Near white
+    textSecondary: '#A0A0A0',        // Medium gray
+    textTertiary: '#6B6B6B',         // Dim gray
+
+    // Borders and dividers
+    border: '#2F2F2F',               // Subtle borders
+    borderLight: '#3F3F3F',          // Lighter borders
+
+    // Semantic colors
+    success: '#3A7563',              // Uses primary green
+    warning: '#C89B3C',              // Muted gold
+    error: '#C94F4F',                // Muted red
+
+    // Accents
+    accent: '#E8D5E8',               // Pale lilac for highlights
+    accentGreen: '#A8D5BA',          // Pale mint for success states
+  },
+  spacing: Spacing,
+  borderRadius: BorderRadius,
+  typography: Typography,
+};
