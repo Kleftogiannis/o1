@@ -17,7 +17,7 @@ Build for personal use first. If it works for daily use by the creator, it will 
 ### Mobile App
 - **Framework:** React Native with Expo
 - **Language:** TypeScript (strict typing for complex voice logic)
-- **Database:** WatermelonDB (offline-first, sub-100ms interactions)
+- **Database:** LokiJS (initial development) → WatermelonDB (migration planned for Phase 3 after personal testing)
 - **Animations:** Rive (for interactive state machine animations - mascot eye tracking, not Lottie)
 - **State Management:** Zustand (lightweight)
 - **Gestures:** react-native-reanimated + react-native-gesture-handler
@@ -42,10 +42,20 @@ Build for personal use first. If it works for daily use by the creator, it will 
 
 ### 1. Offline-First Architecture
 - All interactions must work offline immediately
-- Write to local WatermelonDB first, sync to cloud later
+- Write to local database first (LokiJS initially, WatermelonDB after migration), sync to cloud later
 - No loading spinners (87% of abandonments happen during 2-sec delays)
 - Target: Sub-100ms interaction times
 - Background sync only when internet available
+
+**Database Strategy:**
+- **Phase 0-2:** Use LokiJS for rapid prototyping and personal testing
+  - Simpler setup, easier debugging
+  - Sufficient for single-user offline storage
+  - Focus on validating core features and usage patterns
+- **Phase 3:** Evaluate performance and consider WatermelonDB migration
+  - Migrate when scaling requirements become clear
+  - Only migrate if performance bottlenecks are identified
+  - Migration triggered by: multi-user needs, complex sync requirements, or performance issues
 
 ### 2. Anticipatory UX System
 The app generates decisions BEFORE the user asks, using:
@@ -82,7 +92,7 @@ The app aggregates swipes to make final decision.
 - Manual decision entry only (no AI)
 - Tournament-style elimination (Option A vs B, winner vs C)
 - Factor-based swiping
-- WatermelonDB offline storage
+- LokiJS offline storage (simple, fast setup for prototyping)
 - **Success criteria:** Use it 5+ times per day
 
 ### Phase 1-2 (Weeks 2-3): Voice System
@@ -91,10 +101,12 @@ The app aggregates swipes to make final decision.
 - Time-based voice weighting
 - Voice templates (pre-configured personalities)
 
-### Phase 3 (Week 4): Offline-First Polish
-- WatermelonDB optimization
+### Phase 3 (Week 4): Database Evaluation & Offline-First Polish
+- **Migration Checkpoint:** Evaluate LokiJS performance with real usage data
+- Consider WatermelonDB migration if needed (only if performance issues identified)
+- Database optimization (indexing, query performance)
 - Zero loading states
-- Background sync
+- Background sync architecture
 - Optimistic UI updates
 
 ### Phase 4-5 (Weeks 5-6): Anticipatory Engine (Basic)
@@ -132,29 +144,32 @@ The app aggregates swipes to make final decision.
 - Shareable result cards
 - App store assets
 
-## Database Schema (WatermelonDB)
+## Database Schema (LokiJS → WatermelonDB)
 
+**Initial Implementation (LokiJS):**
 ```typescript
-// Core tables for MVP
+// Core collections for MVP (LokiJS format)
 
-Table: goals
+Collection: goals
 - id, name, priority (1-5), created_at
 
-Table: routine_checks
+Collection: routine_checks
 - id, question, type (boolean/number/text), value, reset_frequency
 
-Table: option_pools
+Collection: option_pools
 - id, category (Food/Weekend/Work), options (JSON array)
 
-Table: voices
+Collection: voices
 - id, name, priority_goals (JSON), weight, phrases (JSON), time_weights (JSON)
 
-Table: decisions
+Collection: decisions
 - id, category, winner, runner_up, timestamp, voice_breakdown (JSON)
 
-Table: preferences
+Collection: preferences
 - id, category, option_name, score (wins count), last_chosen
 ```
+
+**Note:** Schema structure will remain the same when migrating to WatermelonDB in Phase 3. Migration will focus on performance optimization and sync capabilities, not data model changes.
 
 ## Development Commands
 
@@ -366,7 +381,27 @@ This saves tokens and ensures high-quality, production-grade frontend code.
 - Input validation before database writes
 - Type guards for runtime data validation
 
-**WatermelonDB specific:**
+**LokiJS specific (Phase 0-2):**
+```typescript
+// Good - with error handling
+try {
+  const decision = decisionsCollection.findOne({ id: decisionId });
+  if (decision) {
+    decision.winner = option.name;
+    decisionsCollection.update(decision);
+    db.saveDatabase(); // Persist to file system
+  }
+} catch (error) {
+  logger.error('Failed to update decision', { error, decisionId });
+  // Show user-friendly error
+}
+
+// Use proper indexing for performance
+decisionsCollection.ensureIndex('timestamp');
+decisionsCollection.ensureIndex('category');
+```
+
+**WatermelonDB specific (Phase 3+, after migration):**
 ```typescript
 // Good - with error handling
 try {
@@ -420,7 +455,7 @@ await database.write(async () => {
 
 **Testing Strategy:**
 - Write unit tests for business logic (voice scoring, decision algorithms)
-- Integration tests for WatermelonDB operations
+- Integration tests for database operations (LokiJS initially, WatermelonDB after migration)
 - E2E tests for critical flows (create decision → swipe → result)
 - Manual testing on physical devices (not just simulator)
 - Test offline mode explicitly (disable network)
@@ -438,7 +473,7 @@ await database.write(async () => {
 - Card swipe must feel instant (<100ms response)
 - No jank during animations (maintain 60fps)
 - App cold start under 2 seconds on mid-range devices
-- WatermelonDB queries optimized with proper indexes
+- Database queries optimized with proper indexes (LokiJS or WatermelonDB)
 
 **Optimization Strategies:**
 - Lazy load heavy components (mascot animations, charts)
@@ -491,7 +526,14 @@ const winner = useDecisionStore(state => state.currentDecision?.winner);
 - Don't import from wrong package (use `react-native` not `react-native-web`)
 - Don't forget to run `npx pod-install` after adding native dependencies (iOS)
 
-**WatermelonDB Specific:**
+**LokiJS Specific (Phase 0-2):**
+- Use `.insert()` for creating new documents
+- Use `.find()` or `.findOne()` for queries
+- Use `.update()` for modifications
+- Call `db.saveDatabase()` after write operations to persist
+- Create indexes with `.ensureIndex()` for frequently queried fields
+
+**WatermelonDB Specific (Phase 3+, after migration):**
 - Always use `@action` decorator for model methods
 - Never modify observables outside database.write()
 - Don't query in render - use `observe()` or `withObservables()`
@@ -540,9 +582,10 @@ const winner = useDecisionStore(state => state.currentDecision?.winner);
 - Document breaking changes in CHANGELOG.md
 
 **Architecture Decisions:**
-- Document major decisions (why WatermelonDB over Realm, why Rive over Lottie)
-- Keep CLAUDE.md updated as architecture evolves
+- Document major decisions (why LokiJS for Phase 0-2, why Rive over Lottie, migration path to WatermelonDB)
+- Keep CLAUDE.md and PROGRESS.md updated as architecture evolves
 - Create diagrams for complex flows (voice scoring, sync logic)
+- Track completed and upcoming tasks in PROGRESS.md
 
 ### Accessibility
 

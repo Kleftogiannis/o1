@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -16,6 +17,8 @@ import { Theme } from '../constants/theme';
 
 export default function CreateDecisionScreen() {
   const router = useRouter();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const optionInputRefs = useRef<(TextInput | null)[]>([]);
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
@@ -44,6 +47,7 @@ export default function CreateDecisionScreen() {
 
   const handleStart = () => {
     if (canProceed) {
+      Keyboard.dismiss();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // Navigate to tournament screen with data
       router.push({
@@ -57,15 +61,19 @@ export default function CreateDecisionScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
+        keyboardVerticalOffset={0}
       >
         <ScrollView
+          ref={scrollViewRef}
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          keyboardDismissMode="on-drag"
         >
           {/* Header */}
           <View style={styles.header}>
@@ -105,11 +113,21 @@ export default function CreateDecisionScreen() {
                   styles.optionCard,
                   focusedIndex === index && styles.optionCardFocused,
                 ]}
+                onLayout={(event) => {
+                  // Store the Y position of each option card for scrolling
+                  const layout = event.nativeEvent.layout;
+                  if (!optionInputRefs.current[index]) {
+                    optionInputRefs.current[index] = null;
+                  }
+                }}
               >
                 <View style={styles.optionNumber}>
                   <Text style={styles.optionNumberText}>{index + 1}</Text>
                 </View>
                 <TextInput
+                  ref={(ref) => {
+                    optionInputRefs.current[index] = ref;
+                  }}
                   style={styles.optionInput}
                   placeholder={`Option ${index + 1}`}
                   placeholderTextColor={Theme.colors.textTertiary}
@@ -118,6 +136,13 @@ export default function CreateDecisionScreen() {
                   onFocus={() => {
                     setFocusedIndex(index);
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    // Scroll to make the focused input visible with some extra space
+                    setTimeout(() => {
+                      scrollViewRef.current?.scrollTo({
+                        y: index * 80 + 200,
+                        animated: true,
+                      });
+                    }, 100);
                   }}
                   onBlur={() => setFocusedIndex(null)}
                   maxLength={100}
@@ -175,7 +200,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 100,
+    paddingBottom: 180,
   },
   header: {
     marginBottom: 32,
@@ -301,12 +326,8 @@ const styles = StyleSheet.create({
     color: Theme.colors.primary,
   },
   bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 20,
     backgroundColor: Theme.colors.background,
     borderTopWidth: 1,
     borderTopColor: Theme.colors.border,
