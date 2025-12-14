@@ -97,44 +97,44 @@ export const Typography = {
   },
 };
 
-// Dark emerald/pine green + deep plum minimal theme
+// Minimal mist grey + deep green-blue + lila palette
 export const Theme = {
   colors: {
-    // Dark theme base
-    background: '#0A0A0A',           // Pure black with slight warmth
-    backgroundSecondary: '#1A1A1A',  // Elevated surface
-    surface: '#1F1F1F',              // Card backgrounds
-    surfaceElevated: '#2A2A2A',      // Hover/pressed states
+    // Mist grey base
+    background: '#0F0F11',           // Deep charcoal
+    backgroundSecondary: '#1A1A1D',  // Elevated mist
+    surface: '#202024',              // Card backgrounds
+    surfaceElevated: '#2A2A2F',      // Hover/pressed states
 
-    // Primary: Dark emerald/pine green
-    primary: '#2D5F4F',              // Deep pine green
-    primaryLight: '#3A7563',         // Lighter emerald
-    primaryDark: '#1E4237',          // Darker forest green
-    primaryMuted: 'rgba(45, 95, 79, 0.15)', // Subtle backgrounds
+    // Primary: Deep teal/green-blue
+    primary: '#2A5F6F',              // Deep teal
+    primaryLight: '#3A7A8A',         // Lighter ocean blue
+    primaryDark: '#1B4552',          // Darker deep sea
+    primaryMuted: 'rgba(42, 95, 111, 0.15)', // Subtle backgrounds
 
-    // Secondary: Deep plum/lilac
-    secondary: '#6B4E71',            // Deep plum
-    secondaryLight: '#8B6B8F',       // Lighter lilac
-    secondaryDark: '#4A3450',        // Darker plum
-    secondaryMuted: 'rgba(107, 78, 113, 0.15)', // Subtle backgrounds
+    // Secondary: Soft lila/purple
+    secondary: '#7A6B8F',            // Soft lila
+    secondaryLight: '#9B8AAD',       // Lighter lavender
+    secondaryDark: '#5A4A6F',        // Darker plum
+    secondaryMuted: 'rgba(122, 107, 143, 0.15)', // Subtle backgrounds
 
-    // Text hierarchy
-    textPrimary: '#F5F5F5',          // Near white
-    textSecondary: '#A0A0A0',        // Medium gray
-    textTertiary: '#6B6B6B',         // Dim gray
+    // Text hierarchy (mist grey tones)
+    textPrimary: '#F0F0F2',          // Soft white with grey tint
+    textSecondary: '#9A9AA5',        // Mist grey
+    textTertiary: '#6A6A75',         // Dark mist
 
-    // Borders and dividers
-    border: '#2F2F2F',               // Subtle borders
-    borderLight: '#3F3F3F',          // Lighter borders
+    // Borders and dividers (minimal)
+    border: '#2F2F35',               // Subtle mist borders
+    borderLight: '#3F3F45',          // Lighter mist borders
 
     // Semantic colors
-    success: '#3A7563',              // Uses primary green
-    warning: '#C89B3C',              // Muted gold
-    error: '#C94F4F',                // Muted red
+    success: '#3A7A8A',              // Uses primary teal
+    warning: '#B89B5C',              // Muted gold
+    error: '#B85C5C',                // Muted red
 
     // Accents
-    accent: '#E8D5E8',               // Pale lilac for highlights
-    accentGreen: '#A8D5BA',          // Pale mint for success states
+    accent: '#D5C5E8',               // Pale lila for highlights
+    accentTeal: '#A8CDD5',           // Pale teal for success states
   },
   spacing: Spacing,
   borderRadius: BorderRadius,

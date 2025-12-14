@@ -15,6 +15,7 @@ export const COLLECTIONS = {
   PREFERENCES: 'preferences',
   ROUTINE_CHECKS: 'routine_checks',
   FACTORS: 'factors',
+  USER_STATS: 'user_stats',
 } as const;
 
 // Database instance
@@ -84,6 +85,9 @@ export async function initDatabase(): Promise<Loki> {
         if (!db!.getCollection(COLLECTIONS.FACTORS)) {
           db!.addCollection(COLLECTIONS.FACTORS);
         }
+        if (!db!.getCollection(COLLECTIONS.USER_STATS)) {
+          db!.addCollection(COLLECTIONS.USER_STATS);
+        }
 
         isInitialized = true;
         resolve(db!);
@@ -127,6 +131,7 @@ export async function resetDatabase(): Promise<void> {
   database.addCollection(COLLECTIONS.PREFERENCES);
   database.addCollection(COLLECTIONS.ROUTINE_CHECKS);
   database.addCollection(COLLECTIONS.FACTORS);
+  database.addCollection(COLLECTIONS.USER_STATS);
 
   // Save changes
   await saveDatabase();

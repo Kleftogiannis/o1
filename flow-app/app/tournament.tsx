@@ -17,6 +17,8 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '../constants/theme';
 import { decisionService } from '../services/DecisionService';
+import { streakService } from '../services/StreakService';
+import { RandomizeButton } from '../components/RandomizeButton';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 40;
@@ -71,7 +73,9 @@ export default function TournamentScreen() {
         completed: true,
         durationMs,
       });
-      console.log('Decision saved:', { winner, runnerUp, durationMs });
+
+      // Update streak after completing decision
+      await streakService.updateStreakAfterDecision();
     } catch (error) {
       console.error('Failed to save decision:', error);
       // Don't show error to user - decision is complete in UI regardless
@@ -310,6 +314,7 @@ export default function TournamentScreen() {
                 <Text style={styles.winnerText}>{winner}</Text>
               </LinearGradient>
             </View>
+
             <Pressable
               style={styles.doneButton}
               onPress={() => {
@@ -436,6 +441,34 @@ export default function TournamentScreen() {
               </Animated.View>
             </Animated.View>
           </GestureDetector>
+
+          {/* Randomize Button (BEFORE swiping) */}
+          <View style={styles.randomizeContainer}>
+            <RandomizeButton
+              options={tournamentOptions.filter(o => !o.eliminated).map(o => o.text)}
+              onRandomize={() => {
+                // Pick random winner from ALL remaining options
+                const remaining = tournamentOptions.filter(o => !o.eliminated);
+                if (remaining.length > 0) {
+                  const randomIndex = Math.floor(Math.random() * remaining.length);
+                  const randomWinner = remaining[randomIndex].text;
+
+                  // Find runner-up (next best option)
+                  const runnerUp = remaining.find(o => o.text !== randomWinner)?.text || '';
+
+                  // Save result immediately
+                  const durationMs = Date.now() - startTime.current;
+                  saveDecisionResult(randomWinner, runnerUp, durationMs);
+
+                  // Set winner and complete
+                  setWinner(randomWinner);
+                  setIsComplete(true);
+
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                }
+              }}
+            />
+          </View>
 
           {/* Swipe hint */}
           <View style={styles.hintContainer}>
@@ -618,8 +651,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
+  randomizeContainer: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+  },
   hintContainer: {
-    marginTop: 24,
+    marginTop: 16,
     paddingHorizontal: 20,
   },
   hintText: {

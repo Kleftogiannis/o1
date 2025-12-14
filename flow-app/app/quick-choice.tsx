@@ -27,6 +27,8 @@ import Animated, {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { decisionService } from '../services/DecisionService';
+import { streakService } from '../services/StreakService';
+import { RandomizeButton } from '../components/RandomizeButton';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
@@ -92,12 +94,24 @@ export default function QuickChoiceScreen() {
         completed: true,
         durationMs,
       });
+
+      // Update streak
+      await streakService.updateStreakAfterDecision();
     } catch (error) {
       console.error('Failed to save decision:', error);
     }
 
     // Show result
     setScreen('result');
+  };
+
+  const handleRandomChoice = () => {
+    // Randomly pick between option A and B
+    const randomIndex = Math.floor(Math.random() * 2);
+    const chosenOption = randomIndex === 0 ? optionA : optionB;
+    const otherOption = randomIndex === 0 ? optionB : optionA;
+
+    handleChoice(chosenOption, otherOption);
   };
 
   const gesture = Gesture.Pan()
@@ -195,15 +209,6 @@ export default function QuickChoiceScreen() {
           >
             {/* Header */}
             <View style={styles.header}>
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.back();
-                }}
-                style={styles.backButton}
-              >
-                <Text style={styles.backButtonText}>← Back</Text>
-              </Pressable>
               <Text style={styles.headerTitle}>QUICK CHOICE</Text>
             </View>
 
@@ -299,6 +304,7 @@ export default function QuickChoiceScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.decisionContainer}>
+
           {/* Question */}
           <View style={styles.decisionHeader}>
             <Text style={styles.decisionQuestion}>{question}</Text>
@@ -371,6 +377,14 @@ export default function QuickChoiceScreen() {
               </Pressable>
             </Animated.View>
           </GestureDetector>
+
+          {/* Random Choice Button */}
+          <View style={styles.randomizeContainer}>
+            <RandomizeButton
+              options={[optionA, optionB]}
+              onRandomize={handleRandomChoice}
+            />
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -430,21 +444,8 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
     marginBottom: 8,
-  },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 8,
-  },
-  backButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#CCCCCC',
   },
   headerTitle: {
     fontSize: 20,
@@ -568,7 +569,7 @@ const styles = StyleSheet.create({
   },
   decisionHeader: {
     position: 'absolute',
-    top: 40,
+    top: 60,
     left: 20,
     right: 20,
     alignItems: 'center',
@@ -588,15 +589,15 @@ const styles = StyleSheet.create({
   },
   swipeCard: {
     width: SCREEN_WIDTH - 40,
-    height: SCREEN_HEIGHT * 0.5,
+    height: SCREEN_HEIGHT * 0.4,
     flexDirection: 'row',
     borderRadius: 24,
     overflow: 'hidden',
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
+    borderWidth: 3,
+    borderColor: '#2F2F35',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.6,
+    shadowOpacity: 0.4,
     shadowRadius: 20,
     elevation: 10,
   },
@@ -620,10 +621,12 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
   optionText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: 8,
   },
   swipeHint: {
     fontSize: 12,
@@ -689,6 +692,13 @@ const styles = StyleSheet.create({
     fontSize: 50,
     color: '#FFFFFF',
     fontWeight: 'bold',
+  },
+  randomizeContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    zIndex: 10,
   },
 
   // Result Screen

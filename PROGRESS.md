@@ -55,6 +55,49 @@
   - [ ] Document UX issues and bugs
   - [ ] Assess: "Do I naturally reach for this app?"
 
+### Phase 0.5: Core Gamification (After Phase 0 Validation)
+**Goal:** Transform app from "tool" to "addictive game" based on reference image insights
+
+**Priority Features (7-8 hours total):**
+- [ ] **Streak System** (1 hour)
+  - [ ] Add `current_streak`, `longest_streak`, `last_decision_date` to user_stats
+  - [ ] Display streak badge on home screen: "🔥 14 Day Streak"
+  - [ ] Reset logic if user misses a day
+  - [ ] Milestone animations (7, 14, 30, 100 days)
+
+- [ ] **Decision Timer & Points System** (3-4 hours)
+  - [ ] Implement hybrid timer system:
+    - Countdown (60s) for quick decisions (food, gym, coffee)
+    - Count-up (no limit) for big decisions (purchases, career)
+  - [ ] Create points economy:
+    - Earn: +100 (fast), +50 (medium), +25 (slow), +50 (streak bonus)
+    - Lose: -50 (timeout), -100 (goal contradiction), -100 (broke streak)
+  - [ ] Database schema: `user_stats`, `point_transactions` collections
+  - [ ] UI components: CountdownTimer, PointsDisplay, PointsAnimation
+  - [ ] Haptic feedback at timer milestones (30s, 10s, 5s)
+  - [ ] Point milestones unlock rewards (500pts, 1000pts, 2500pts, etc.)
+
+- [ ] **Pending Decisions Queue** (2 hours)
+  - [ ] Home screen shows 3-5 pending decision cards
+  - [ ] Each card: category icon, title, deadline, quick binary buttons
+  - [ ] Voice preview on buttons: "(Lazy: Cold outside)" vs "(Disciplined: Feel better)"
+  - [ ] Tap card → tournament mode, tap button → instant binary decision
+  - [ ] Add `deadline`, `is_pending` fields to decisions
+  - [ ] Sort by deadline (earliest first)
+
+- [ ] **Decision History Feed** (1 hour)
+  - [ ] New tab: "History"
+  - [ ] Show all completed decisions in feed
+  - [ ] Tap to see details (winner, runner-up, duration, points earned)
+  - [ ] Group by date (Today, Yesterday, This Week)
+  - [ ] Stats at top: total decisions, average time, total points
+
+**Success Criteria:**
+- Use app 10+ times per day (up from 5+)
+- Feel "pull" to check pending decisions
+- Fear breaking streak (loss aversion working)
+- Points balance feels rewarding (net positive)
+
 ### Phase 1-2: Voice System (Weeks 2-3)
 - [ ] Design voice data model (Disciplined, Lazy, Future, Budget, Chaotic)
 - [ ] Create VoiceEngine.ts for scoring logic
@@ -131,6 +174,20 @@
 - **Philosophy:** Build for personal use first - if creator doesn't use it 5+ times/day, iteration required
 - **Success Metric:** App must feel addictive, like a 5-second game
 - **Design Goal:** "If Tinder and Notion had a baby" - playful but professional
+
+### Reference Image Insights (2025-12-14)
+**Source:** `flow-app/assets/references/` (3 reference images analyzed)
+
+**Key Takeaways:**
+1. **Pending Decisions Queue** (Ref 1) - Home screen should show upcoming decisions with deadlines
+2. **Streak Counter Prominent** (Ref 1) - "🔥 14 Day Streak" displayed top-right
+3. **Voice Preview on Buttons** (Ref 1) - Quick binary choices show voice reasoning
+4. **Speech Bubble UI for Voices** (Ref 2) - Chat-style dialogue makes voices feel like characters
+5. **Visual Swipe Feedback** (Ref 2) - NOPE/YES stamps on card swipes
+6. **Analytics Dashboard** (Ref 3) - "2.4 hours saved this week" + voice usage breakdown
+7. **Timer System Needed** - Missing in references, but critical for urgency/gamification
+
+**Decision:** Implement Phase 0.5 features (Streak, Timer, Points, Queue, History) immediately after Phase 0 validation to maximize engagement before adding voice complexity.
 
 ---
 

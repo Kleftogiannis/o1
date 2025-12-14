@@ -82,6 +82,30 @@ export default function RootLayout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen
+          name="home"
+          options={{
+            title: 'Home',
+            presentation: 'card',
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="stats"
+          options={{
+            title: 'Stats',
+            presentation: 'card',
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            presentation: 'card',
+            headerShown: false,
+          }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );
