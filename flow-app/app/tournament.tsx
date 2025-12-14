@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, Dimensions, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +16,7 @@ import Animated, {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '../constants/theme';
+import { decisionService } from '../services/DecisionService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 40;
@@ -37,8 +38,10 @@ export default function TournamentScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
+  const decisionId = params.decisionId as string;
   const question = params.question as string;
   const optionsParam = params.options as string;
+  const startTime = useRef(Date.now());
 
   const [tournamentOptions, setTournamentOptions] = useState<TournamentOption[]>([]);
   const [bracket, setBracket] = useState<Matchup[]>([]);
@@ -53,6 +56,27 @@ export default function TournamentScreen() {
   const scale = useSharedValue(1);
   const leftCardOpacity = useSharedValue(1);
   const rightCardOpacity = useSharedValue(1);
+
+  // Save decision result to database
+  const saveDecisionResult = async (winner: string, runnerUp: string, durationMs: number) => {
+    if (!decisionId) {
+      console.warn('No decisionId provided, skipping save');
+      return;
+    }
+
+    try {
+      await decisionService.updateDecision(decisionId, {
+        winner,
+        runnerUp,
+        completed: true,
+        durationMs,
+      });
+      console.log('Decision saved:', { winner, runnerUp, durationMs });
+    } catch (error) {
+      console.error('Failed to save decision:', error);
+      // Don't show error to user - decision is complete in UI regardless
+    }
+  };
 
   // Initialize tournament options and create initial bracket
   useEffect(() => {
@@ -124,8 +148,16 @@ export default function TournamentScreen() {
 
     // Check if we have a winner
     if (remainingOptions.length === 1) {
-      setWinner(remainingOptions[0].text);
+      const finalWinner = remainingOptions[0].text;
+      const finalRunnerUp = newOptions[loserIndex].text; // Last eliminated option is runner-up
+
+      setWinner(finalWinner);
       setIsComplete(true);
+
+      // Save decision result to database
+      const durationMs = Date.now() - startTime.current;
+      saveDecisionResult(finalWinner, finalRunnerUp, durationMs);
+
       return;
     }
 

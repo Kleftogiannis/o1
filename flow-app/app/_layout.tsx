@@ -66,6 +66,22 @@ export default function RootLayout() {
             presentation: 'modal'
           }}
         />
+        <Stack.Screen
+          name="history"
+          options={{
+            title: 'Decision History',
+            presentation: 'card',
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="quick-choice"
+          options={{
+            title: 'Quick Choice',
+            presentation: 'card',
+            headerShown: false,
+          }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );

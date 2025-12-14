@@ -9,11 +9,13 @@ import {
   Platform,
   ScrollView,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '../constants/theme';
+import { decisionService } from '../services/DecisionService';
 
 export default function CreateDecisionScreen() {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function CreateDecisionScreen() {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   const addOption = () => {
     if (options.length < 5) {
@@ -45,18 +48,41 @@ export default function CreateDecisionScreen() {
 
   const canProceed = question.trim() && options.filter(o => o.trim()).length >= 2;
 
-  const handleStart = () => {
-    if (canProceed) {
+  const handleStart = async () => {
+    if (!canProceed || isCreating) return;
+
+    try {
+      setIsCreating(true);
       Keyboard.dismiss();
+
+      // Create decision in database
+      const decision = await decisionService.createDecision({
+        question: question.trim(),
+        options: options.filter(o => o.trim()),
+        method: 'tournament',
+      });
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // Navigate to tournament screen with data
+
+      // Navigate to tournament screen with decision ID
       router.push({
         pathname: '/tournament',
         params: {
+          decisionId: decision.id,
           question,
           options: JSON.stringify(options.filter(o => o.trim())),
         },
       });
+    } catch (error) {
+      console.error('Failed to create decision:', error);
+      Alert.alert(
+        'Error',
+        'Could not create decision. Please try again.',
+        [{ text: 'OK' }]
+      );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -173,12 +199,12 @@ export default function CreateDecisionScreen() {
             onPress={handleStart}
             style={[
               styles.startButton,
-              !canProceed && styles.startButtonDisabled,
+              (!canProceed || isCreating) && styles.startButtonDisabled,
             ]}
-            disabled={!canProceed}
+            disabled={!canProceed || isCreating}
           >
             <Text style={styles.startButtonText}>
-              Start Deciding
+              {isCreating ? 'Creating...' : 'Start Deciding'}
             </Text>
           </Pressable>
         </View>

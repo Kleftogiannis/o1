@@ -134,7 +134,7 @@ export default function DebugScreen() {
         'Decisions',
         `Found ${allDecisions.length} decisions\n\n${allDecisions
           .slice(0, 3)
-          .map((d) => `• ${d.question} → ${d.winner}`)
+          .map((d: any) => `• ${d.question} → ${d.winner}`)
           .join('\n')}`
       );
     } catch (error) {

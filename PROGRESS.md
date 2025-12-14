@@ -30,20 +30,30 @@
 
 ## Next Tasks (Priority Order)
 
-### Immediate (This Week)
-- [ ] Integrate LokiJS database for offline storage
-  - [ ] Set up database schema (Decisions, Options, History)
-  - [ ] Create database service layer
-  - [ ] Implement CRUD operations for decisions
-- [ ] Build CardStack component with swipe gestures
-  - [ ] Implement physics-based card animations
-  - [ ] Add haptic feedback on swipe actions
-  - [ ] Create card reveal animations
-- [ ] Complete tournament elimination flow
-  - [ ] Option A vs B comparison
-  - [ ] Winner vs next option logic
-  - [ ] Final decision selection and storage
-- [ ] Test app with personal use (target: 5+ decisions per day)
+### Completed This Week ✅
+- [x] Integrate LokiJS database for offline storage
+  - [x] Set up database schema (Decisions, Options, History)
+  - [x] Create database service layer (`services/DecisionService.ts`)
+  - [x] Implement CRUD operations for decisions
+  - [x] Wire UI screens to database (create-decision.tsx, tournament.tsx)
+  - [x] Add duration tracking and winner persistence
+- [x] Tournament elimination flow
+  - [x] Option A vs B comparison (swipe-based)
+  - [x] Winner vs next option logic
+  - [x] Final decision selection and storage
+  - [x] Database integration for result saving
+- [x] CardStack component with swipe gestures
+  - [x] Implement physics-based card animations (Reanimated)
+  - [x] Add haptic feedback on swipe actions
+  - [x] Create smooth 60fps swipe experience
+
+### Immediate Next Step
+- [ ] Test app with personal use (target: 5+ decisions per day for 2 weeks)
+  - [ ] Run on physical device (Expo Go)
+  - [ ] Make real daily decisions (lunch, workout, weekend plans)
+  - [ ] Track usage metrics and friction points
+  - [ ] Document UX issues and bugs
+  - [ ] Assess: "Do I naturally reach for this app?"
 
 ### Phase 1-2: Voice System (Weeks 2-3)
 - [ ] Design voice data model (Disciplined, Lazy, Future, Budget, Chaotic)
