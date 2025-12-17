@@ -18,7 +18,11 @@ import * as Haptics from 'expo-haptics';
 import { Theme } from '../constants/theme';
 import { decisionService } from '../services/DecisionService';
 import { streakService } from '../services/StreakService';
+import { pointsService } from '../services/PointsService';
+import { bettingService, BET_AMOUNTS } from '../services/BettingService';
 import { RandomizeButton } from '../components/RandomizeButton';
+import { DecisionTimer } from '../components/DecisionTimer';
+import { PointsAnimation } from '../components/PointsAnimation';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 40;
@@ -51,6 +55,12 @@ export default function TournamentScreen() {
   const [isComplete, setIsComplete] = useState(false);
   const [winner, setWinner] = useState<string>('');
   const [eliminatedOptions, setEliminatedOptions] = useState<TournamentOption[]>([]);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [showPointsAnimation, setShowPointsAnimation] = useState(false);
+  const [pointsEarned, setPointsEarned] = useState(0);
+  const [pointsReason, setPointsReason] = useState('');
+  const [showBettingPanel, setShowBettingPanel] = useState(false);
+  const [wasRandomPick, setWasRandomPick] = useState(false);
 
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -59,7 +69,7 @@ export default function TournamentScreen() {
   const leftCardOpacity = useSharedValue(1);
   const rightCardOpacity = useSharedValue(1);
 
-  // Save decision result to database
+  // Save decision result to database and award points
   const saveDecisionResult = async (winner: string, runnerUp: string, durationMs: number) => {
     if (!decisionId) {
       console.warn('No decisionId provided, skipping save');
@@ -75,7 +85,37 @@ export default function TournamentScreen() {
       });
 
       // Update streak after completing decision
-      await streakService.updateStreakAfterDecision();
+      const streakResult = await streakService.updateStreakAfterDecision();
+
+      // Apply streak break penalty if applicable
+      if (streakResult.streakBroken && streakResult.previousStreak > 0) {
+        await pointsService.addPoints(
+          -100,
+          `Streak broken (lost ${streakResult.previousStreak} days)`,
+          { category: 'penalty' }
+        );
+      }
+
+      // Calculate and award points
+      const timeInSeconds = Math.floor(durationMs / 1000);
+      const { points, reason } = pointsService.calculateDecisionPoints(timeInSeconds, false);
+
+      // Add points to user's balance
+      await pointsService.addPoints(points, reason, {
+        decisionId,
+        category: 'decision',
+      });
+
+      // If streak was broken, show warning in points reason
+      let finalReason = reason;
+      if (streakResult.streakBroken && streakResult.previousStreak > 0) {
+        finalReason = `${reason} | ⚠️ Streak broken -100`;
+      }
+
+      // Show points animation
+      setPointsEarned(points);
+      setPointsReason(finalReason);
+      setShowPointsAnimation(true);
     } catch (error) {
       console.error('Failed to save decision:', error);
       // Don't show error to user - decision is complete in UI regardless
@@ -290,6 +330,26 @@ export default function TournamentScreen() {
     );
   }
 
+  const handlePlaceBet = async (betAmount: number) => {
+    if (!decisionId) return;
+
+    try {
+      await bettingService.placeBet(decisionId, question, winner, betAmount);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowBettingPanel(false);
+
+      // Show confirmation
+      Alert.alert(
+        `Bet Placed! 🎲`,
+        `You bet ${betAmount} pts on following through. Check History tab tomorrow to resolve it.`,
+        [{ text: 'Got it!' }]
+      );
+    } catch (error) {
+      console.error('Failed to place bet:', error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+  };
+
   if (isComplete) {
     return (
       <SafeAreaView style={styles.container}>
@@ -299,9 +359,11 @@ export default function TournamentScreen() {
         >
           <View style={styles.resultContainer}>
             <View style={styles.confettiContainer}>
-              <Text style={styles.confettiText}>🎉</Text>
+              <Text style={styles.confettiText}>{wasRandomPick ? '🎲' : '🎉'}</Text>
             </View>
-            <Text style={styles.resultTitle}>Decision Made!</Text>
+            <Text style={styles.resultTitle}>
+              {wasRandomPick ? 'Random Pick!' : 'Decision Made!'}
+            </Text>
             <Text style={styles.resultQuestion}>{question}</Text>
             <View style={styles.winnerCard}>
               <LinearGradient
@@ -314,6 +376,68 @@ export default function TournamentScreen() {
                 <Text style={styles.winnerText}>{winner}</Text>
               </LinearGradient>
             </View>
+
+            {/* Betting Panel - Only show if NOT random pick */}
+            {!wasRandomPick && !showBettingPanel && (
+              <Pressable
+                style={styles.bettingPrompt}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowBettingPanel(true);
+                }}
+              >
+                <Text style={styles.bettingPromptText}>💪 Bet on follow-through?</Text>
+                <Text style={styles.bettingPromptSubtext}>Tap to place a bet</Text>
+              </Pressable>
+            )}
+
+            {/* Betting Options */}
+            {!wasRandomPick && showBettingPanel && (
+              <View style={styles.bettingPanel}>
+                <View style={styles.bettingHeader}>
+                  <Text style={styles.bettingTitle}>BET ON FOLLOW-THROUGH</Text>
+                  <Text style={styles.bettingSubtitle}>
+                    Will you actually do it? Self-report tomorrow in History tab.
+                  </Text>
+                </View>
+
+                <View style={styles.betButtons}>
+                  <Pressable
+                    style={[styles.betButton, styles.betButtonLow]}
+                    onPress={() => handlePlaceBet(BET_AMOUNTS.LOW)}
+                  >
+                    <Text style={styles.betButtonLabel}>LOW</Text>
+                    <Text style={styles.betButtonAmount}>{BET_AMOUNTS.LOW}</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.betButton, styles.betButtonMedium]}
+                    onPress={() => handlePlaceBet(BET_AMOUNTS.MEDIUM)}
+                  >
+                    <Text style={styles.betButtonLabel}>MEDIUM</Text>
+                    <Text style={styles.betButtonAmount}>{BET_AMOUNTS.MEDIUM}</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.betButton, styles.betButtonHigh]}
+                    onPress={() => handlePlaceBet(BET_AMOUNTS.HIGH)}
+                  >
+                    <Text style={styles.betButtonLabel}>HIGH</Text>
+                    <Text style={styles.betButtonAmount}>{BET_AMOUNTS.HIGH}</Text>
+                  </Pressable>
+                </View>
+
+                <Pressable
+                  style={styles.skipBetButton}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setShowBettingPanel(false);
+                  }}
+                >
+                  <Text style={styles.skipBetText}>Skip Betting</Text>
+                </Pressable>
+              </View>
+            )}
 
             <Pressable
               style={styles.doneButton}
@@ -368,6 +492,40 @@ export default function TournamentScreen() {
               <Text style={styles.roundText}>Round {currentRound}</Text>
             </LinearGradient>
           </View>
+        </View>
+
+        {/* Decision Timer */}
+        <View style={styles.timerContainer}>
+          <DecisionTimer
+            duration={60}
+            isActive={!isComplete}
+            onTick={(secondsRemaining) => {
+              setElapsedSeconds(60 - secondsRemaining);
+            }}
+            onTimeout={async () => {
+              // Deduct timeout penalty
+              try {
+                await pointsService.addPoints(
+                  -50,
+                  'Decision timeout',
+                  { category: 'penalty' }
+                );
+
+                // Show penalty animation
+                setPointsEarned(-50);
+                setPointsReason('Decision timeout');
+                setShowPointsAnimation(true);
+
+                Alert.alert(
+                  'Time\'s Up! -50 pts',
+                  'The timer expired. Make a decision quickly!',
+                  [{ text: 'OK' }]
+                );
+              } catch (error) {
+                console.error('Failed to apply timeout penalty:', error);
+              }
+            }}
+          />
         </View>
 
         <View style={styles.tournamentArea}>
@@ -446,7 +604,7 @@ export default function TournamentScreen() {
           <View style={styles.randomizeContainer}>
             <RandomizeButton
               options={tournamentOptions.filter(o => !o.eliminated).map(o => o.text)}
-              onRandomize={() => {
+              onRandomize={async () => {
                 // Pick random winner from ALL remaining options
                 const remaining = tournamentOptions.filter(o => !o.eliminated);
                 if (remaining.length > 0) {
@@ -456,12 +614,23 @@ export default function TournamentScreen() {
                   // Find runner-up (next best option)
                   const runnerUp = remaining.find(o => o.text !== randomWinner)?.text || '';
 
-                  // Save result immediately
-                  const durationMs = Date.now() - startTime.current;
-                  saveDecisionResult(randomWinner, runnerUp, durationMs);
+                  // Save decision WITHOUT points (random picks don't earn points)
+                  if (decisionId) {
+                    try {
+                      await decisionService.updateDecision(decisionId, {
+                        winner: randomWinner,
+                        runnerUp,
+                        completed: true,
+                        durationMs: Date.now() - startTime.current,
+                      });
+                    } catch (error) {
+                      console.error('Failed to save random decision:', error);
+                    }
+                  }
 
-                  // Set winner and complete
+                  // Set winner and complete (mark as random)
                   setWinner(randomWinner);
+                  setWasRandomPick(true);
                   setIsComplete(true);
 
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -475,6 +644,14 @@ export default function TournamentScreen() {
             <Text style={styles.hintText}>👆 Swipe to choose your favorite</Text>
           </View>
         </View>
+
+        {/* Points Animation Overlay */}
+        <PointsAnimation
+          points={pointsEarned}
+          reason={pointsReason}
+          visible={showPointsAnimation}
+          onComplete={() => setShowPointsAnimation(false)}
+        />
       </LinearGradient>
     </SafeAreaView>
   );
@@ -490,8 +667,13 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 24,
+    paddingBottom: 16,
     alignItems: 'center',
     gap: 12,
+  },
+  timerContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
   },
   questionText: {
     fontSize: 22,
@@ -739,5 +921,104 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.5,
+  },
+
+  // Betting Prompt
+  bettingPrompt: {
+    marginTop: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: Theme.colors.backgroundSecondary,
+    borderWidth: 2,
+    borderColor: Theme.colors.border,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  bettingPromptText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Theme.colors.textPrimary,
+    marginBottom: 4,
+  },
+  bettingPromptSubtext: {
+    fontSize: 12,
+    color: Theme.colors.textTertiary,
+    fontWeight: '600',
+  },
+
+  // Betting Panel
+  bettingPanel: {
+    marginTop: 20,
+    padding: 20,
+    backgroundColor: Theme.colors.surface,
+    borderWidth: 3,
+    borderColor: Theme.colors.primary,
+    borderRadius: 16,
+  },
+  bettingHeader: {
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  bettingTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: Theme.colors.primary,
+    letterSpacing: 2,
+    fontFamily: 'monospace',
+    marginBottom: 8,
+  },
+  bettingSubtitle: {
+    fontSize: 12,
+    color: Theme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  betButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  betButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+  },
+  betButtonLow: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: '#10B981',
+  },
+  betButtonMedium: {
+    backgroundColor: 'rgba(255, 214, 0, 0.1)',
+    borderColor: '#FFD600',
+  },
+  betButtonHigh: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: '#EF4444',
+  },
+  betButtonLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: Theme.colors.textTertiary,
+    letterSpacing: 1.5,
+    fontFamily: 'monospace',
+    marginBottom: 4,
+  },
+  betButtonAmount: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: Theme.colors.textPrimary,
+    fontFamily: 'monospace',
+  },
+  skipBetButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  skipBetText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Theme.colors.textTertiary,
+    textDecorationLine: 'underline',
   },
 });

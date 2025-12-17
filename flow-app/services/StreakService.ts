@@ -73,9 +73,13 @@ class StreakService {
 
   /**
    * Update streak after a decision is made
-   * Returns new streak count
+   * Returns object with new streak count and whether streak was broken
    */
-  async updateStreakAfterDecision(): Promise<number> {
+  async updateStreakAfterDecision(): Promise<{
+    newStreak: number;
+    streakBroken: boolean;
+    previousStreak: number;
+  }> {
     try {
       const db = await getDatabase();
       let statsCollection = db.getCollection<UserStats>(COLLECTIONS.USER_STATS);
@@ -88,6 +92,8 @@ class StreakService {
       const stats = await this.getUserStats();
       const now = Date.now();
       const oneDayMs = 24 * 60 * 60 * 1000;
+      const previousStreak = stats.currentStreak;
+      let streakBroken = false;
 
       // Check if last decision was today (same calendar day)
       const lastDecisionDate = new Date(stats.lastDecisionDate);
@@ -103,7 +109,11 @@ class StreakService {
         stats.updatedAt = now;
         statsCollection.update(stats);
         await saveDatabase();
-        return stats.currentStreak;
+        return {
+          newStreak: stats.currentStreak,
+          streakBroken: false,
+          previousStreak,
+        };
       }
 
       // Check if streak is broken (missed yesterday)
@@ -116,12 +126,19 @@ class StreakService {
 
       if (stats.lastDecisionDate === 0 || timeSinceLastDecision >= 2 * oneDayMs) {
         // First decision ever OR missed more than 1 day = reset streak
+        if (stats.lastDecisionDate !== 0 && stats.currentStreak > 0) {
+          // Streak was broken (not first time)
+          streakBroken = true;
+        }
         stats.currentStreak = 1;
       } else if (isYesterday || timeSinceLastDecision < oneDayMs) {
         // Decided yesterday or within 24h = increment streak
         stats.currentStreak += 1;
       } else {
         // Missed a day = reset
+        if (stats.currentStreak > 0) {
+          streakBroken = true;
+        }
         stats.currentStreak = 1;
       }
 
@@ -138,7 +155,11 @@ class StreakService {
       statsCollection.update(stats);
       await saveDatabase();
 
-      return stats.currentStreak;
+      return {
+        newStreak: stats.currentStreak,
+        streakBroken,
+        previousStreak,
+      };
     } catch (error) {
       console.error('Failed to update streak:', error);
       throw new Error('Could not update streak');

@@ -5,6 +5,9 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { decisionService, type DecisionRecord } from '../services/DecisionService';
+import { bettingService, type DecisionBet } from '../services/BettingService';
+import { pointsService } from '../services/PointsService';
+import { PointsAnimation } from '../components/PointsAnimation';
 
 type GroupedDecisions = {
   today: DecisionRecord[];
@@ -29,6 +32,10 @@ export default function HistoryScreen() {
   });
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [pendingBets, setPendingBets] = useState<DecisionBet[]>([]);
+  const [showPointsAnimation, setShowPointsAnimation] = useState(false);
+  const [pointsEarned, setPointsEarned] = useState(0);
+  const [pointsReason, setPointsReason] = useState('');
 
   useEffect(() => {
     loadHistory();
@@ -39,6 +46,8 @@ export default function HistoryScreen() {
       setLoading(true);
       const allDecisions = await decisionService.getDecisions({ completed: true });
       const statsData = await decisionService.getStats();
+      const bets = await bettingService.getPendingBets();
+      setPendingBets(bets);
 
       // Group decisions by time
       const now = Date.now();
@@ -115,6 +124,43 @@ export default function HistoryScreen() {
   const toggleExpand = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setExpandedId(expandedId === id ? null : id);
+  };
+
+  const handleResolveBet = async (betId: string, outcome: 'completed' | 'skipped') => {
+    try {
+      const { bet, pointsAwarded } = await bettingService.resolveBet(betId, outcome);
+
+      // Award/deduct points
+      await pointsService.addPoints(
+        pointsAwarded,
+        outcome === 'completed'
+          ? `Bet won: ${bet.winner}`
+          : `Bet lost: ${bet.winner}`,
+        { decisionId: bet.decisionId, category: 'bet' }
+      );
+
+      // Show points animation
+      setPointsEarned(pointsAwarded);
+      setPointsReason(
+        outcome === 'completed'
+          ? `You did it! +${bet.betAmount}`
+          : `Didn't follow through -${bet.betAmount}`
+      );
+      setShowPointsAnimation(true);
+
+      // Reload bets
+      const updatedBets = await bettingService.getPendingBets();
+      setPendingBets(updatedBets);
+
+      Haptics.notificationAsync(
+        outcome === 'completed'
+          ? Haptics.NotificationFeedbackType.Success
+          : Haptics.NotificationFeedbackType.Warning
+      );
+    } catch (error) {
+      console.error('Failed to resolve bet:', error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
   };
 
   const renderDecisionCard = (decision: DecisionRecord) => {
@@ -232,6 +278,61 @@ export default function HistoryScreen() {
           <Text style={styles.headerTitle}>HISTORY</Text>
         </View>
 
+        {/* Pending Bets Section */}
+        {pendingBets.length > 0 && (
+          <View style={styles.pendingBetsSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.pendingBetsTitle}>⏳ PENDING BETS</Text>
+              <View style={styles.sectionDivider} />
+              <Text style={styles.sectionCount}>{pendingBets.length}</Text>
+            </View>
+
+            {pendingBets.map((bet) => (
+              <View key={bet.id} style={styles.betCard}>
+                <View style={styles.betHeader}>
+                  <Text style={styles.betQuestion} numberOfLines={2}>
+                    {bet.question}
+                  </Text>
+                  <View style={styles.betAmountBadge}>
+                    <Text style={styles.betAmountText}>{bet.betAmount} pts</Text>
+                  </View>
+                </View>
+
+                <View style={styles.betChoice}>
+                  <Text style={styles.betChoiceLabel}>YOU CHOSE:</Text>
+                  <Text style={styles.betChoiceText}>{bet.winner}</Text>
+                </View>
+
+                <View style={styles.betActions}>
+                  <Pressable
+                    style={[styles.betActionButton, styles.betActionDone]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      handleResolveBet(bet.id, 'completed');
+                    }}
+                  >
+                    <Text style={styles.betActionTextDone}>✓ DID IT</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.betActionButton, styles.betActionSkipped]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      handleResolveBet(bet.id, 'skipped');
+                    }}
+                  >
+                    <Text style={styles.betActionTextSkipped}>✗ SKIPPED</Text>
+                  </Pressable>
+                </View>
+
+                <Text style={styles.betTimeAgo}>
+                  {Math.floor((Date.now() - bet.createdAt) / (1000 * 60 * 60))}h ago
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Stats Card */}
         <View style={styles.statsCard}>
           <LinearGradient
@@ -278,6 +379,14 @@ export default function HistoryScreen() {
 
         <View style={styles.footer} />
       </ScrollView>
+
+      {/* Points Animation Overlay */}
+      <PointsAnimation
+        points={pointsEarned}
+        reason={pointsReason}
+        visible={showPointsAnimation}
+        onComplete={() => setShowPointsAnimation(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -537,5 +646,114 @@ const styles = StyleSheet.create({
 
   footer: {
     height: 20,
+  },
+
+  // Pending Bets
+  pendingBetsSection: {
+    marginBottom: 32,
+  },
+  pendingBetsTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#FFD600',
+    letterSpacing: 2,
+    fontFamily: 'monospace',
+  },
+  betCard: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#FFD600',
+    padding: 16,
+    marginBottom: 12,
+  },
+  betHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    gap: 12,
+  },
+  betQuestion: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#CCCCCC',
+    lineHeight: 20,
+  },
+  betAmountBadge: {
+    backgroundColor: '#FFD600',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  betAmountText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#000000',
+    fontFamily: 'monospace',
+  },
+  betChoice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A',
+  },
+  betChoiceLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#666666',
+    letterSpacing: 1.5,
+    fontFamily: 'monospace',
+  },
+  betChoiceText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFD600',
+    flex: 1,
+  },
+  betActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 8,
+  },
+  betActionButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 2,
+  },
+  betActionDone: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderColor: '#10B981',
+  },
+  betActionSkipped: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderColor: '#EF4444',
+  },
+  betActionTextDone: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#10B981',
+    letterSpacing: 1.5,
+    fontFamily: 'monospace',
+  },
+  betActionTextSkipped: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#EF4444',
+    letterSpacing: 1.5,
+    fontFamily: 'monospace',
+  },
+  betTimeAgo: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#666666',
+    textAlign: 'center',
+    fontFamily: 'monospace',
   },
 });

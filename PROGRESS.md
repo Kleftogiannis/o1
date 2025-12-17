@@ -65,17 +65,17 @@
   - [ ] Reset logic if user misses a day
   - [ ] Milestone animations (7, 14, 30, 100 days)
 
-- [ ] **Decision Timer & Points System** (3-4 hours)
-  - [ ] Implement hybrid timer system:
-    - Countdown (60s) for quick decisions (food, gym, coffee)
-    - Count-up (no limit) for big decisions (purchases, career)
-  - [ ] Create points economy:
-    - Earn: +100 (fast), +50 (medium), +25 (slow), +50 (streak bonus)
+- [x] **Decision Timer & Points System** (3-4 hours) - **COMPLETED 2024-12-18**
+  - [x] Implement countdown timer (60s) for all decisions
+  - [x] Create points economy:
+    - Earn: +100 (fast <10s), +50 (medium 10-30s), +25 (slow 30-60s), +10 (overtime >60s)
     - Lose: -50 (timeout), -100 (goal contradiction), -100 (broke streak)
-  - [ ] Database schema: `user_stats`, `point_transactions` collections
-  - [ ] UI components: CountdownTimer, PointsDisplay, PointsAnimation
-  - [ ] Haptic feedback at timer milestones (30s, 10s, 5s)
-  - [ ] Point milestones unlock rewards (500pts, 1000pts, 2500pts, etc.)
+  - [x] Database schema: `PointsService` with AsyncStorage persistence
+  - [x] UI components: DecisionTimer (tech-styled with progress bar), PointsDisplay (digital counter), PointsAnimation (geometric burst)
+  - [x] Haptic feedback at timer milestones (30s, 10s, 5s)
+  - [x] Point milestones tracking (500pts, 1000pts, 2500pts, 5000pts, 10000pts)
+  - [x] Integrated into tournament screen with automatic points awarding
+  - [x] Points display on home screen (top-right, below streak badge)
 
 - [ ] **Pending Decisions Queue** (2 hours)
   - [ ] Home screen shows 3-5 pending decision cards

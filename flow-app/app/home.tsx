@@ -10,6 +10,7 @@ import { decisionService } from '../services/DecisionService';
 import { streakService } from '../services/StreakService';
 import { StreakBadge } from '../components/StreakBadge';
 import { BottomNav } from '../components/BottomNav';
+import { PointsDisplay } from '../components/PointsDisplay';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = (SCREEN_WIDTH - 60) / 2; // 2 columns with spacing
@@ -76,19 +77,29 @@ export default function HomeScreen() {
   const router = useRouter();
   const [pressedCard, setPressedCard] = useState<string | null>(null);
   const [streakDays, setStreakDays] = useState(0);
+  const [decisionsToday, setDecisionsToday] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load streak on mount
+  // Load streak and stats on mount
   useEffect(() => {
-    loadStreak();
+    loadStats();
   }, []);
 
-  const loadStreak = async () => {
+  const loadStats = async () => {
     try {
       const streak = await streakService.getCurrentStreak();
       setStreakDays(streak);
+
+      // Count decisions made today
+      const today = new Date().toDateString();
+      const allDecisions = await decisionService.getDecisions();
+      const todayDecisions = allDecisions.filter(d => {
+        const decisionDate = new Date(d.createdAt).toDateString();
+        return decisionDate === today && d.completed;
+      });
+      setDecisionsToday(todayDecisions.length);
     } catch (error) {
-      console.error('Failed to load streak:', error);
+      console.error('Failed to load stats:', error);
     }
   };
 
@@ -137,33 +148,98 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {/* Back to O(1) Home Button (top-left) */}
-        <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push('/');
-          }}
-          style={styles.backToHomeButton}
-        >
-          <Text style={styles.backToHomeText}>← O(1)</Text>
-        </Pressable>
-
-        {/* Streak Badge (floating top-right) */}
-        <StreakBadge streakDays={streakDays} position="top-right" />
-
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-        {/* Hero Section */}
-        <View style={styles.hero}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logo}>{Brand.name}</Text>
-            <View style={styles.logoBorder} />
+        {/* Compact Logo */}
+        <View style={styles.compactHeader}>
+          <Text style={styles.compactLogo}>{Brand.name}</Text>
+          <View style={styles.compactLogoBorder} />
+        </View>
+
+        {/* Racing Scoreboard - 3 Stats */}
+        <View style={styles.scoreboard}>
+          {/* Streak Card */}
+          <View style={styles.statCard}>
+            <View style={styles.statIconContainer}>
+              <Text style={styles.statIcon}>🔥</Text>
+            </View>
+            <Text style={styles.statLabel}>STREAK</Text>
+            <Text style={styles.statValue}>{streakDays}</Text>
+            <View style={styles.statCornerTL} />
+            <View style={styles.statCornerBR} />
           </View>
-          <Text style={styles.tagline}>{Brand.tagline}</Text>
-          <Text style={styles.subtitle}>Tap a card. Make a decision. Done.</Text>
+
+          {/* Points Card */}
+          <View style={styles.statCard}>
+            <View style={styles.statIconContainer}>
+              <Text style={styles.statIcon}>⚡</Text>
+            </View>
+            <Text style={styles.statLabel}>POINTS</Text>
+            <PointsDisplay size="small" showBackground={false} />
+            <View style={styles.statCornerTL} />
+            <View style={styles.statCornerBR} />
+          </View>
+
+          {/* Today Card */}
+          <View style={styles.statCard}>
+            <View style={styles.statIconContainer}>
+              <Text style={styles.statIcon}>📊</Text>
+            </View>
+            <Text style={styles.statLabel}>TODAY</Text>
+            <Text style={styles.statValue}>{decisionsToday}</Text>
+            <View style={styles.statCornerTL} />
+            <View style={styles.statCornerBR} />
+          </View>
+        </View>
+
+        {/* Hero: Quick Choice */}
+        <Pressable
+          onPressIn={() => {
+            setPressedCard('quick');
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          }}
+          onPressOut={() => setPressedCard(null)}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            router.push('/quick-choice');
+          }}
+          style={[
+            styles.heroQuickChoice,
+            pressedCard === 'quick' && styles.heroQuickChoicePressed,
+          ]}
+        >
+          <LinearGradient
+            colors={['#00E676', '#00C853']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroQuickGradient}
+          >
+            <View style={styles.heroQuickContent}>
+              <Text style={styles.heroQuickEmoji}>⚡</Text>
+              <View style={styles.heroQuickTextContainer}>
+                <Text style={styles.heroQuickTitle}>QUICK CHOICE</Text>
+                <Text style={styles.heroQuickSubtext}>A vs B • Instant decision</Text>
+              </View>
+              <View style={styles.heroQuickArrow}>
+                <Text style={styles.heroQuickArrowText}>→</Text>
+              </View>
+            </View>
+            {/* Racing corners */}
+            <View style={styles.heroCornerTL} />
+            <View style={styles.heroCornerTR} />
+            <View style={styles.heroCornerBL} />
+            <View style={styles.heroCornerBR} />
+          </LinearGradient>
+        </Pressable>
+
+        {/* Section Divider */}
+        <View style={styles.sectionDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.sectionTitle}>TEMPLATES</Text>
+          <View style={styles.dividerLine} />
         </View>
 
         {/* Decision Template Grid */}
@@ -207,34 +283,6 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* Quick Choice Card */}
-        <Pressable
-          onPressIn={() => {
-            setPressedCard('quick');
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }}
-          onPressOut={() => setPressedCard(null)}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            router.push('/quick-choice');
-          }}
-          style={[
-            styles.quickCard,
-            pressedCard === 'quick' && styles.quickCardPressed,
-          ]}
-        >
-          <LinearGradient
-            colors={['#00E676', '#00C853']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.quickCardGradient}
-          >
-            <Text style={styles.quickCardEmoji}>⚡</Text>
-            <Text style={styles.quickCardText}>QUICK CHOICE</Text>
-            <Text style={styles.quickCardSubtext}>A vs B • 3 seconds</Text>
-          </LinearGradient>
-        </Pressable>
-
         {/* Custom Decision Card */}
         <Pressable
           onPressIn={() => {
@@ -274,68 +322,211 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  backToHomeButton: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    zIndex: 100,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: Theme.colors.backgroundSecondary,
-    borderRadius: 8,
-  },
-  backToHomeText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Theme.colors.primary,
-    fontFamily: 'monospace',
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 120, // Extra space for bottom nav + floating button
+    paddingTop: 20,
+    paddingBottom: 120, // Extra space for bottom nav
   },
 
-  // Hero Section
-  hero: {
-    paddingTop: 32,
-    paddingBottom: 40,
+  // Compact Header
+  compactHeader: {
     alignItems: 'center',
+    marginBottom: 24,
   },
-  logoContainer: {
-    position: 'relative',
-    marginBottom: 12,
-  },
-  logo: {
-    fontSize: 64,
+  compactLogo: {
+    fontSize: 40,
     fontWeight: '900',
     color: Theme.colors.textPrimary,
-    letterSpacing: 4,
-    fontFamily: 'monospace',
-  },
-  logoBorder: {
-    position: 'absolute',
-    bottom: -4,
-    left: 0,
-    right: 0,
-    height: 6,
-    backgroundColor: Theme.colors.primary,
-  },
-  tagline: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Theme.colors.primary,
     letterSpacing: 3,
-    textTransform: 'uppercase',
     fontFamily: 'monospace',
-    marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 15,
-    color: Theme.colors.textSecondary,
-    fontWeight: '500',
+  compactLogoBorder: {
+    width: 80,
+    height: 4,
+    backgroundColor: Theme.colors.primary,
+    marginTop: 8,
+  },
+
+  // Racing Scoreboard
+  scoreboard: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: Theme.colors.backgroundSecondary,
+    borderWidth: 2,
+    borderColor: Theme.colors.border,
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    position: 'relative',
+    minHeight: 100,
+  },
+  statIconContainer: {
+    marginBottom: 4,
+  },
+  statIcon: {
+    fontSize: 24,
+  },
+  statLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: Theme.colors.textTertiary,
+    letterSpacing: 1.5,
+    fontFamily: 'monospace',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: Theme.colors.textPrimary,
+    fontFamily: 'monospace',
+    letterSpacing: 1,
+  },
+  statCornerTL: {
+    position: 'absolute',
+    top: -1,
+    left: -1,
+    width: 10,
+    height: 10,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderColor: Theme.colors.primary,
+  },
+  statCornerBR: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 10,
+    height: 10,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderColor: Theme.colors.primary,
+  },
+
+  // Hero Quick Choice
+  heroQuickChoice: {
+    marginBottom: 24,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#00E676',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  heroQuickChoicePressed: {
+    transform: [{ scale: 0.97 }],
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+  },
+  heroQuickGradient: {
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    position: 'relative',
+  },
+  heroQuickContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  heroQuickEmoji: {
+    fontSize: 48,
+  },
+  heroQuickTextContainer: {
+    flex: 1,
+  },
+  heroQuickTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 2,
+    fontFamily: 'monospace',
+    marginBottom: 4,
+  },
+  heroQuickSubtext: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  heroQuickArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroQuickArrowText: {
+    fontSize: 24,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  heroCornerTL: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    width: 16,
+    height: 16,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  heroCornerTR: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 16,
+    height: 16,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  heroCornerBL: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    width: 16,
+    height: 16,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  heroCornerBR: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    width: 16,
+    height: 16,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+
+  // Section Divider
+  sectionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: Theme.colors.border,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Theme.colors.textTertiary,
+    letterSpacing: 2,
+    fontFamily: 'monospace',
   },
 
   // Template Grid
@@ -400,48 +591,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     textTransform: 'uppercase',
     letterSpacing: 1,
-  },
-
-  // Quick Choice Card
-  quickCard: {
-    marginTop: 4,
-    marginBottom: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 3,
-    borderColor: Theme.colors.border,
-    shadowColor: Theme.colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  quickCardPressed: {
-    transform: [{ scale: 0.98 }],
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-  },
-  quickCardGradient: {
-    paddingVertical: 28,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    gap: 8,
-  },
-  quickCardEmoji: {
-    fontSize: 40,
-    marginBottom: 4,
-  },
-  quickCardText: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 2,
-    fontFamily: 'monospace',
-  },
-  quickCardSubtext: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '600',
   },
 
   // Custom Card
